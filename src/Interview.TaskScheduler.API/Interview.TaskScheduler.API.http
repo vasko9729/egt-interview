@@ -1,0 +1,6 @@
+@Interview.TaskScheduler.API_HostAddress = http://localhost:5020
+
+GET {{Interview.TaskScheduler.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

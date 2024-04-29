@@ -1,0 +1,72 @@
+﻿@page "/"
+@using Interview.TaskScheduler.Shared.Contracts
+@using Microsoft.AspNetCore.SignalR.Client;
+@implements IAsyncDisposable
+
+<PageTitle>TaskScheduler</PageTitle>
+
+<h3>TaskScheduler</h3>
+
+<button class="btn btn-primary" @onclick="ScheduleNewJob" disabled="@(!isConnected)">Schedule new job</button>
+
+<table class="table">
+	<thead>
+		<tr>
+			<th>JobId</th>
+			<th>Progress</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var job in _jobUpdates)
+		{
+			<tr>
+				<td>@job.Key</td>
+				<td>
+					<Progress Class="mb-3">
+						<ProgressBar Width=@job.Value.LoadingPercents Label="@string.Format("{0}%", job.Value.LoadingPercents)" />
+					</Progress>
+				</td>
+			</tr>
+		}
+	</tbody>
+</table>
+
+
+@code {
+	private HubConnection? hubConnection;
+
+	public bool isConnected => hubConnection?.State == HubConnectionState.Connected;
+
+	private Dictionary<string, JobUpdate> _jobUpdates = new Dictionary<string, JobUpdate>();
+
+	protected override async Task OnInitializedAsync()
+	{
+		hubConnection = new HubConnectionBuilder()
+			.WithUrl("https://localhost:7211/jobs")
+			.Build();
+
+		hubConnection.On<JobUpdate>("JobUpdates", jobUpdate =>
+		{
+			_jobUpdates[jobUpdate.JobId] = jobUpdate;
+			InvokeAsync(StateHasChanged);
+		});
+
+		await hubConnection.StartAsync();
+	}
+
+	private async Task ScheduleNewJob()
+	{
+		if(hubConnection is not null)
+		{
+			await hubConnection.SendAsync("ScheduleNewJob");
+		}
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if(hubConnection is not null)
+		{
+			await hubConnection.DisposeAsync();
+		}
+	}
+}
